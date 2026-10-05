@@ -29,11 +29,11 @@
   .seg button{flex:1;padding:9px;border:0.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font-size:15px;}
   .seg button.on{background:var(--blue);color:#fff;border-color:var(--blue);}
   .fab{margin:0 12px 10px;width:calc(100% - 24px);padding:12px;border:0;border-radius:12px;background:var(--blue);color:#fff;font-size:16px;font-weight:600;}
-  form.add{background:var(--card);margin:0 12px 12px;border-radius:14px;padding:12px 14px;display:none;}
-  form.add.on{display:block;}
-  form.add label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;}
-  form.add input[type=text],form.add input[type=date]{width:100%;padding:10px;border:0.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:16px;}
-  form.add .seg{margin:0;}
+  .add{background:var(--card);margin:0 12px 12px;border-radius:14px;padding:12px 14px;display:none;}
+  .add.on{display:block;}
+  .add label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;}
+  .add input[type=text],.add input[type=date]{width:100%;padding:10px;border:0.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:16px;}
+  .add .seg{margin:0;}
   .row{display:flex;gap:8px;align-items:center;}
   button.fin{border:0;background:var(--green);color:#fff;font-size:15px;font-weight:600;border-radius:10px;padding:10px 14px;}
   button.fin:disabled{opacity:.5;}
@@ -46,14 +46,14 @@
 <p id="status"></p>
 <main>
   <button class="fab" id="sl-toggle">＋ 追加</button>
-  <form class="add" id="sl-form">
+  <div class="add" id="sl-form">
     <label>内容</label><input type="text" id="sl-title" maxlength="200" placeholder="例：牛乳／保育園に電話">
     <label>種別</label>
-    <div class="seg" id="sl-kind"><button type="button" data-k="TODO" class="on">TODO</button><button type="button" data-k="買い物">買い物</button></div>
+    <div class="seg" id="sl-kind"><button type="button" data-k="TODO">TODO</button><button type="button" data-k="買い物" class="on">買い物</button></div>
     <label>期限（任意）</label><input type="date" id="sl-due">
     <label>数量（任意・買い物のみ）</label><input type="text" id="sl-qty" maxlength="50" placeholder="例：2個">
-    <div class="row" style="margin-top:12px;"><button type="submit" class="fab" style="margin:0;width:100%;" id="sl-save">保存</button></div>
-  </form>
+    <div class="row" style="margin-top:12px;"><button type="button" class="fab" style="margin:0;width:100%;" id="sl-save">保存</button></div>
+  </div>
   <div id="sl-list"></div>
 </main>
 
@@ -113,7 +113,7 @@ async function load(){
   } catch (e) { setStatus(e.message, true); }
 }
 
-let slKind = "TODO";
+let slKind = "買い物";
 $("sl-toggle").onclick = () => {
   const f = $("sl-form"); f.classList.toggle("on");
   if (f.classList.contains("on")) $("sl-title").focus();
@@ -123,8 +123,7 @@ $("sl-kind").addEventListener("click", e => {
   slKind = b.dataset.k;
   document.querySelectorAll("#sl-kind button").forEach(x => x.classList.toggle("on", x === b));
 });
-$("sl-form").addEventListener("submit", async e => {
-  e.preventDefault();
+$("sl-save").addEventListener("click", async () => {
   const title = $("sl-title").value.trim();
   if (!title) { setStatus("内容を入力してください", true); return; }
   $("sl-save").disabled = true;
