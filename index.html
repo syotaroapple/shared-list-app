@@ -12,8 +12,9 @@
        padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);}
   header{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 8px;}
   h1{font-size:24px;margin:0;}
-  #gear,#reload{border:0;background:none;color:var(--blue);font-size:15px;padding:8px;}
-  #gear{font-size:18px;}
+  #gear,#sl-toggle{border:0;background:none;color:var(--blue);font-size:18px;padding:8px;}
+  #sl-toggle{font-size:24px;font-weight:600;}
+  #ptr{height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);}
   #status{margin:0 16px 8px;font-size:13px;color:var(--muted);min-height:18px;}
   #status.err{color:var(--red);}
   h2{font-size:13px;color:var(--muted);margin:18px 16px 6px;font-weight:600;}
@@ -42,16 +43,15 @@
 </style>
 </head>
 <body>
-<header><h1>📝 共有リスト</h1><span><button id="gear" title="設定">⚙︎</button><button id="reload">更新</button></span></header>
+<header><h1>📝 共有リスト</h1><span><button id="sl-toggle" title="追加">＋</button><button id="gear" title="設定">⚙︎</button></span></header>
 <p id="status"></p>
 <main>
-  <button class="fab" id="sl-toggle">＋ 追加</button>
+  <div id="ptr">↓ 引っ張って更新</div>
   <div class="add" id="sl-form">
     <label>内容</label><input type="text" id="sl-title" maxlength="200" placeholder="例：牛乳／保育園に電話">
     <label>種別</label>
     <div class="seg" id="sl-kind"><button type="button" data-k="TODO">TODO</button><button type="button" data-k="買い物" class="on">買い物</button></div>
     <label>期限（任意）</label><input type="date" id="sl-due">
-    <label>数量（任意・買い物のみ）</label><input type="text" id="sl-qty" maxlength="50" placeholder="例：2個">
     <div class="row" style="margin-top:12px;"><button type="button" class="fab" style="margin:0;width:100%;" id="sl-save">保存</button></div>
   </div>
   <div id="sl-list"></div>
@@ -130,9 +130,8 @@ $("sl-save").addEventListener("click", async () => {
   try {
     const body = {title, kind: slKind};
     if ($("sl-due").value) body.due = $("sl-due").value;
-    if ($("sl-qty").value.trim()) body.quantity = $("sl-qty").value.trim();
     await api("/shared-list/items", {method: "POST", body: JSON.stringify(body)});
-    $("sl-title").value = ""; $("sl-due").value = ""; $("sl-qty").value = ""; $("sl-form").classList.remove("on");
+    $("sl-title").value = ""; $("sl-due").value = ""; $("sl-form").classList.remove("on");
     await load(); setStatus("✅ 追加しました");
   } catch (err) { setStatus(err.message, true); }
   $("sl-save").disabled = false;
@@ -155,12 +154,37 @@ $("sl-list").addEventListener("click", async e => {
   }
 });
 
-$("reload").onclick = load;
 $("gear").onclick = () => {
   const cur = getToken();
   const v = prompt("共有リストのトークンを貼り付けてください" + (cur ? "\n（現在: 設定済み。空欄でOKすると変更しません）" : ""), "");
   if (v && v.trim()) { try { localStorage.setItem("shared_list_token", v.trim()); } catch(e) {} load(); }
 };
+
+/* ---------- 下スワイプで更新 ---------- */
+const PTR_THRESHOLD = 60;
+const ptrEl = $("ptr");
+let ptrStartY = null, ptrPulling = false;
+document.addEventListener("touchstart", e => {
+  const atTop = (document.scrollingElement || document.documentElement).scrollTop === 0;
+  ptrStartY = atTop ? e.touches[0].clientY : null;
+  ptrPulling = atTop;
+}, {passive: true});
+document.addEventListener("touchmove", e => {
+  if (!ptrPulling || ptrStartY === null) return;
+  const dy = e.touches[0].clientY - ptrStartY;
+  if (dy > 0) {
+    const h = Math.min(dy * 0.5, 70);
+    ptrEl.style.height = h + "px";
+    ptrEl.textContent = h >= PTR_THRESHOLD ? "↑ 離して更新" : "↓ 引っ張って更新";
+  }
+}, {passive: true});
+document.addEventListener("touchend", () => {
+  if (!ptrPulling) return;
+  const h = parseFloat(ptrEl.style.height) || 0;
+  ptrEl.style.height = "0px";
+  if (h >= PTR_THRESHOLD) { ptrEl.textContent = "更新中…"; load(); }
+  ptrPulling = false; ptrStartY = null;
+}, {passive: true});
 
 load();
 </script>
