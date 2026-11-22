@@ -90,7 +90,7 @@ function slRow(it){
     const label = diff > 0 ? diff + "日超過" : diff === 0 ? "今日" : "あと" + (-diff) + "日";
     due = `<span class="due ${cls}">${label}</span>（${md(it.due)}） ・ `;
   }
-  const sub = [due + (it.quantity ? esc(it.quantity) : ""), it.assignee && it.assignee !== "どちらでも" ? "担当:" + esc(it.assignee) : "", "👤" + esc(it.created_by)].filter(Boolean).join(" ・ ");
+  const sub = [due + (it.quantity ? esc(it.quantity) : ""), it.purchase_place ? "📍" + esc(it.purchase_place) : "", it.assignee && it.assignee !== "どちらでも" ? "担当:" + esc(it.assignee) : "", "👤" + esc(it.created_by)].filter(Boolean).join(" ・ ");
   return `<div class="card"><div class="info"><div class="name">${icon} ${esc(it.title)}</div>
     <div class="sub">${sub}</div></div>
     <div class="col2"><button class="fin" data-id="${esc(it.id)}" data-name="${esc(it.title)}">完了</button>
