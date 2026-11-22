@@ -49,9 +49,6 @@
   <div id="ptr">↓ 引っ張って更新</div>
   <div class="add" id="sl-form">
     <label>内容</label><input type="text" id="sl-title" maxlength="200" placeholder="例：牛乳／保育園に電話">
-    <label>種別</label>
-    <div class="seg" id="sl-kind"><button type="button" data-k="TODO">TODO</button><button type="button" data-k="買い物" class="on">買い物</button></div>
-    <label>期限（任意）</label><input type="date" id="sl-due">
     <div class="row" style="margin-top:12px;"><button type="button" class="fab" style="margin:0;width:100%;" id="sl-save">保存</button></div>
   </div>
   <div id="sl-list"></div>
@@ -113,25 +110,17 @@ async function load(){
   } catch (e) { setStatus(e.message, true); }
 }
 
-let slKind = "買い物";
 $("sl-toggle").onclick = () => {
   const f = $("sl-form"); f.classList.toggle("on");
   if (f.classList.contains("on")) $("sl-title").focus();
 };
-$("sl-kind").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (!b) return;
-  slKind = b.dataset.k;
-  document.querySelectorAll("#sl-kind button").forEach(x => x.classList.toggle("on", x === b));
-});
 $("sl-save").addEventListener("click", async () => {
   const title = $("sl-title").value.trim();
   if (!title) { setStatus("内容を入力してください", true); return; }
   $("sl-save").disabled = true;
   try {
-    const body = {title, kind: slKind};
-    if ($("sl-due").value) body.due = $("sl-due").value;
-    await api("/shared-list/items", {method: "POST", body: JSON.stringify(body)});
-    $("sl-title").value = ""; $("sl-due").value = ""; $("sl-form").classList.remove("on");
+    await api("/shared-list/items", {method: "POST", body: JSON.stringify({title, kind: "TODO"})});
+    $("sl-title").value = ""; $("sl-form").classList.remove("on");
     await load(); setStatus("✅ 追加しました");
   } catch (err) { setStatus(err.message, true); }
   $("sl-save").disabled = false;
