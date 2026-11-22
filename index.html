@@ -81,6 +81,11 @@ async function api(path, opts = {}){
   } finally { clearTimeout(timer); }
 }
 
+const PLACES = ["", "スーパー", "楽天", "Amazon", "その他"];
+function placeTag(it){
+  if (it.kind !== "買い物") return "";
+  return `<span class="tag place" data-id="${esc(it.id)}" data-place="${esc(it.purchase_place || "")}">📍${esc(it.purchase_place || "未設定")}</span>`;
+}
 function slRow(it){
   const icon = it.kind === "買い物" ? "🛒" : "☑️";
   let due = "";
@@ -90,11 +95,29 @@ function slRow(it){
     const label = diff > 0 ? diff + "日超過" : diff === 0 ? "今日" : "あと" + (-diff) + "日";
     due = `<span class="due ${cls}">${label}</span>（${md(it.due)}） ・ `;
   }
-  const sub = [due + (it.quantity ? esc(it.quantity) : ""), it.purchase_place ? "📍" + esc(it.purchase_place) : "", it.assignee && it.assignee !== "どちらでも" ? "担当:" + esc(it.assignee) : "", "👤" + esc(it.created_by)].filter(Boolean).join(" ・ ");
+  const sub = [due + (it.quantity ? esc(it.quantity) : ""), it.assignee && it.assignee !== "どちらでも" ? "担当:" + esc(it.assignee) : "", "👤" + esc(it.created_by)].filter(Boolean).join(" ・ ");
   return `<div class="card"><div class="info"><div class="name">${icon} ${esc(it.title)}</div>
-    <div class="sub">${sub}</div></div>
+    <div class="sub">${sub}${placeTag(it) ? " ・ " + placeTag(it) : ""}</div></div>
     <div class="col2"><button class="fin" data-id="${esc(it.id)}" data-name="${esc(it.title)}">完了</button>
     <button class="link del" data-id="${esc(it.id)}" data-name="${esc(it.title)}">削除</button></div></div>`;
+}
+function startPlaceEdit(tag){
+  if (tag.querySelector("select")) return;
+  const cur = tag.dataset.place || "";
+  const opts = PLACES.map(p => `<option value="${esc(p)}" ${p === cur ? "selected" : ""}>${p || "未設定"}</option>`).join("");
+  tag.innerHTML = `<select>${opts}</select>`;
+  const sel = tag.querySelector("select");
+  sel.focus();
+  sel.addEventListener("change", async () => {
+    const v = sel.value;
+    tag.dataset.place = v;
+    tag.textContent = "📍" + (v || "未設定");
+    try {
+      await api("/shared-list/items/" + encodeURIComponent(tag.dataset.id) + "/purchase-place",
+        {method: "PATCH", body: JSON.stringify({purchase_place: v})});
+    } catch (err) { setStatus(err.message, true); }
+  });
+  sel.addEventListener("blur", () => { tag.textContent = "📍" + (tag.dataset.place || "未設定"); }, {once: true});
 }
 
 async function load(){
@@ -126,6 +149,8 @@ $("sl-save").addEventListener("click", async () => {
   $("sl-save").disabled = false;
 });
 $("sl-list").addEventListener("click", async e => {
+  const place = e.target.closest(".tag.place");
+  if (place) { startPlaceEdit(place); return; }
   const fin = e.target.closest("button.fin");
   if (fin) {
     if (!confirm("「" + fin.dataset.name + "」を完了にしますか？")) return;
