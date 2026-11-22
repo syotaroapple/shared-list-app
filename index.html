@@ -36,6 +36,9 @@
   .add input[type=text],.add input[type=date]{width:100%;padding:10px;border:0.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:16px;}
   .add .seg{margin:0;}
   .row{display:flex;gap:8px;align-items:center;}
+  .chips{display:flex;gap:8px;margin:0 12px 10px;flex-wrap:wrap;}
+  .chips button{padding:7px 14px;border:0.5px solid var(--line);border-radius:16px;background:var(--card);color:var(--text);font-size:14px;}
+  .chips button.on{background:var(--blue);color:#fff;border-color:var(--blue);}
   button.fin{border:0;background:var(--green);color:#fff;font-size:15px;font-weight:600;border-radius:10px;padding:10px 14px;}
   button.fin:disabled{opacity:.5;}
   button.link{border:0;background:none;color:var(--blue);font-size:12px;padding:6px 0 0;}
@@ -50,6 +53,13 @@
   <div class="add" id="sl-form">
     <label>内容</label><input type="text" id="sl-title" maxlength="200" placeholder="例：牛乳／保育園に電話">
     <div class="row" style="margin-top:12px;"><button type="button" class="fab" style="margin:0;width:100%;" id="sl-save">保存</button></div>
+  </div>
+  <div class="chips" id="sl-place-filter">
+    <button data-p="すべて" class="on">すべて</button>
+    <button data-p="スーパー">スーパー</button>
+    <button data-p="楽天">楽天</button>
+    <button data-p="Amazon">Amazon</button>
+    <button data-p="その他">その他</button>
   </div>
   <div id="sl-list"></div>
 </main>
@@ -112,26 +122,42 @@ function startPlaceEdit(tag){
     const v = sel.value;
     tag.dataset.place = v;
     tag.textContent = "📍" + (v || "未設定");
+    const it = lastShared && lastShared.find(x => x.id === tag.dataset.id);
+    if (it) it.purchase_place = v;
     try {
       await api("/shared-list/items/" + encodeURIComponent(tag.dataset.id) + "/purchase-place",
         {method: "PATCH", body: JSON.stringify({purchase_place: v})});
+      if (slPlaceFilter !== "すべて") renderSharedList();
     } catch (err) { setStatus(err.message, true); }
   });
   sel.addEventListener("blur", () => { tag.textContent = "📍" + (tag.dataset.place || "未設定"); }, {once: true});
 }
 
+let lastShared = null;
+let slPlaceFilter = "すべて";
 async function load(){
   setStatus("読み込み中…（スリープ中だと1分ほどかかります）");
   try {
-    const items = await api("/shared-list/items?status=" + encodeURIComponent("未完了"));
-    const todo = items.filter(i => i.kind === "TODO"), shopping = items.filter(i => i.kind === "買い物");
-    let html = "";
-    if (shopping.length) html += "<h2>買い物（" + shopping.length + "件）</h2>" + shopping.map(slRow).join("");
-    if (todo.length) html += "<h2>TODO（" + todo.length + "件）</h2>" + todo.map(slRow).join("");
-    $("sl-list").innerHTML = html || '<p class="empty">共有リストは空です</p>';
+    lastShared = await api("/shared-list/items?status=" + encodeURIComponent("未完了"));
+    renderSharedList();
     setStatus("");
   } catch (e) { setStatus(e.message, true); }
 }
+function renderSharedList(){
+  if (!lastShared) return;
+  const items = lastShared.filter(i => slPlaceFilter === "すべて" || i.purchase_place === slPlaceFilter);
+  const todo = items.filter(i => i.kind === "TODO"), shopping = items.filter(i => i.kind === "買い物");
+  let html = "";
+  if (shopping.length) html += "<h2>買い物（" + shopping.length + "件）</h2>" + shopping.map(slRow).join("");
+  if (todo.length) html += "<h2>TODO（" + todo.length + "件）</h2>" + todo.map(slRow).join("");
+  $("sl-list").innerHTML = html || '<p class="empty">該当する項目はありません</p>';
+}
+$("sl-place-filter").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  slPlaceFilter = b.dataset.p;
+  document.querySelectorAll("#sl-place-filter button").forEach(x => x.classList.toggle("on", x.dataset.p === slPlaceFilter));
+  renderSharedList();
+});
 
 $("sl-toggle").onclick = () => {
   const f = $("sl-form"); f.classList.toggle("on");
