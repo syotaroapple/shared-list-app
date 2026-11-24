@@ -168,7 +168,7 @@ $("sl-save").addEventListener("click", async () => {
   if (!title) { setStatus("内容を入力してください", true); return; }
   $("sl-save").disabled = true;
   try {
-    await api("/shared-list/items", {method: "POST", body: JSON.stringify({title, kind: "TODO"})});
+    await api("/shared-list/items", {method: "POST", body: JSON.stringify({title})});
     $("sl-title").value = ""; $("sl-form").classList.remove("on");
     await load(); setStatus("✅ 追加しました");
   } catch (err) { setStatus(err.message, true); }
